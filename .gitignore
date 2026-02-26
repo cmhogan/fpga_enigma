@@ -1,0 +1,83 @@
+# Copyright (c) 2026, Chad Hogan
+# All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# FPGA build artifacts
+*.bit
+*.bin
+*.svf
+*.jed
+*.mcs
+*.prm
+*.bgn
+*.drc
+*.ncd
+*.ngd
+*.pcf.bak
+*.xpi
+*.xst
+*_map.*
+*_par.*
+*_pad.*
+*.unroutes
+*.xwbt
+*.log
+*.jou
+
+# Vivado
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.srcs/
+*.gen/
+*.xpr.user
+webtalk*.jou
+webtalk*.log
+usage_statistics_webtalk.*
+
+# Quartus
+db/
+incremental_db/
+output_files/
+simulation/
+*.qws
+*.ppf
+*.ddb
+*.cmp
+
+# Yosys / nextpnr / open-source toolchain
+*.blif
+*.asc
+*.json.bak
+hardware.json
+abc.history
+
+# Icarus Verilog simulation artifacts
+*.vvp
+*.vcd
+
+# Build output directory
+build/
+!build/.gitkeep
+
+# Claude
+.claude/

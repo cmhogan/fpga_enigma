@@ -1,0 +1,26 @@
+# Copyright (c) 2026, Chad Hogan
+# All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
+
+# fpga_enigma.pcf — iCE40-HX8K Breakout Board (CT256) pin constraints
+# UART signal names are from the iCE40's perspective:
+#   uart_tx = iCE40 transmits  (connected to FTDI Channel B RXD, pin B10)
+#   uart_rx = iCE40 receives   (connected to FTDI Channel B TXD, pin B12)
+
+# 12 MHz oscillator
+set_io clk       J3
+
+# External reset (active-low)
+set_io ext_rst_n R9
+
+# UART (iCE40 perspective, directly to FTDI Channel B)
+set_io uart_tx   B10
+set_io uart_rx   B12
+
+# LEDs (active-high accent LEDs on HX8K Breakout Board)
+set_io led_d1    B5
+set_io led_d2    B4
+set_io led_d3    A2
+set_io led_d4    A1
+set_io led_d5    C5
