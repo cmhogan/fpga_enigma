@@ -24,6 +24,8 @@ jobs:
         run: make lint
       - name: Synth check
         run: make synth-check
+      - name: Synth check (AMD/Artix-7)
+        run: make synth-check-amd
       - name: Test
         run: make test
       - name: Coverage

@@ -42,6 +42,8 @@ Thumbs.db
 *.jou
 
 # Vivado
+.Xil/
+clockInfo.txt
 *.cache/
 *.hw/
 *.ip_user_files/

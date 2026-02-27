@@ -8,7 +8,7 @@
 // Orchestrates startup, cipher, command parsing, and reset operations.
 
 module fsm_controller #(
-    parameter TIMEOUT_LIMIT = 266240
+    parameter TIMEOUT_LIMIT = 36000000
 ) (
     input  wire        clk,
     input  wire        rst_n,
@@ -114,8 +114,8 @@ module fsm_controller #(
     /* verilator lint_on UNUSED */
     reg [3:0]  return_state  = IDLE;
 
-    // Timeout (256 byte-times at 115200 baud ~ 22ms ~ 266240 clocks)
-    reg [18:0] timeout_cnt   = 19'd0;
+    // Command timeout (default 3 seconds at 12 MHz = 36,000,000 clocks)
+    reg [25:0] timeout_cnt   = 26'd0;
 
     // =========================================================================
     // Response registers
@@ -216,6 +216,7 @@ module fsm_controller #(
                     if (banner_idx == 5'd16) begin
                         if (send_banner_after) begin
                             send_banner_after <= 1'b0;
+                            load_pulse <= 1'b1;  // reload positions from (now-reset) grundstellung
                             resp_ok <= 1'b1;
                             is_query <= 1'b0;
                             resp_start <= 1'b1;
@@ -240,7 +241,7 @@ module fsm_controller #(
                             state <= STEP;
                         end else if (is_colon) begin
                             state <= CMD_OPCODE;
-                            timeout_cnt <= 19'd0;
+                            timeout_cnt <= 26'd0;
                         end
                     end
                 end
@@ -284,19 +285,19 @@ module fsm_controller #(
                                 arg_count <= 3'd3;
                                 arg_buf <= 24'd0;
                                 state <= CMD_ARG;
-                                timeout_cnt <= 19'd0;
+                                timeout_cnt <= 26'd0;
                             end
                             "S": begin
                                 arg_count <= 3'd2;
                                 arg_buf <= 24'd0;
                                 state <= CMD_ARG;
-                                timeout_cnt <= 19'd0;
+                                timeout_cnt <= 26'd0;
                             end
                             "U": begin
                                 arg_count <= 3'd1;
                                 arg_buf <= 24'd0;
                                 state <= CMD_ARG;
-                                timeout_cnt <= 19'd0;
+                                timeout_cnt <= 26'd0;
                             end
                             "G": state <= RESET_GRUNDSTELLUNG;
                             "F": state <= FACTORY_RESET;
@@ -318,20 +319,20 @@ module fsm_controller #(
                         if (timeout_cnt >= TIMEOUT_LIMIT)
                             state <= IDLE;
                         else
-                            timeout_cnt <= timeout_cnt + 19'd1;
+                            timeout_cnt <= timeout_cnt + 26'd1;
                     end
                 end
 
                 CMD_ARG: begin
                     if (rx_valid) begin
-                        timeout_cnt <= 19'd0;
+                        timeout_cnt <= 26'd0;
                         if (is_crlf) begin
                             state <= CMD_EXEC;
                         end else if (is_colon) begin
                             // New command abort
                             cmd_opcode <= 8'd0;
                             state <= CMD_OPCODE;
-                            timeout_cnt <= 19'd0;
+                            timeout_cnt <= 26'd0;
                         end else if (arg_count > 3'd0) begin
                             // Shift argument in
                             if (cmd_opcode == "R") begin
@@ -351,7 +352,7 @@ module fsm_controller #(
                         if (timeout_cnt >= TIMEOUT_LIMIT)
                             state <= IDLE;
                         else
-                            timeout_cnt <= timeout_cnt + 19'd1;
+                            timeout_cnt <= timeout_cnt + 26'd1;
                     end
                 end
 

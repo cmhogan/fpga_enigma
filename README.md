@@ -1,6 +1,6 @@
 # FPGA Enigma I
 
-A faithful hardware implementation of the Wehrmacht Enigma I cipher machine in Verilog, targeting the Lattice iCE40-HX8K Breakout Board (ICE40HX8K-B-EVN).
+A faithful hardware implementation of the Wehrmacht Enigma I cipher machine in Verilog, targeting the Lattice iCE40-HX8K Breakout Board (ICE40HX8K-B-EVN), Digilent Arty A7-100T, and Digilent Nexys A7-100T.
 
 Communicate with the machine over a 115200-baud serial terminal — type a letter, get the enciphered letter back instantly, exactly as the original 1930s electromechanical device would have produced it.
 
@@ -16,11 +16,20 @@ Communicate with the machine over a 115200-baud serial terminal — type a lette
 
 ## Hardware Requirements
 
+**iCE40 (original):**
 - **Lattice iCE40-HX8K Breakout Board** (ICE40HX8K-B-EVN)
 - USB cable (board provides power and serial via onboard FTDI FT2232HL)
+
+**AMD Artix-7 (added):**
+- **Digilent Arty A7-100T** or **Digilent Nexys A7-100T**
+- USB cable (boards provide power and USB-UART bridge)
+
+**All boards:**
 - Serial terminal: minicom, screen, PuTTY, etc.
 
 ## Resource Utilization
+
+**Lattice iCE40-HX8K** (Yosys `synth_ice40` via `make synth-check`):
 
 | Resource | Used | Available | Utilization |
 |----------|------|-----------|-------------|
@@ -31,7 +40,18 @@ Communicate with the machine over a 115200-baud serial terminal — type a lette
 | I/O Pins | 8 | 256 | 3% |
 | Fmax | 12.86 MHz | 12 MHz required | PASS |
 
-*Synthesis numbers from Yosys `synth_ice40` via `make synth-check`.*
+**AMD Artix-7 / XC7A100T** (Vivado 2025.1, post-route):
+
+| Resource | Arty A7 | Nexys A7 | Available | Utilization |
+|----------|---------|----------|-----------|-------------|
+| Slice LUTs | 1,280 | 1,279 | 63,400 | 2.0% |
+| Flip-flops | 509 | 516 | 126,800 | 0.4% |
+| Block RAM | 0 | 0 | 135 | 0% |
+| DSP | 0 | 0 | 240 | 0% |
+| Bonded IOB | 9 | 8 | 210 | 4% |
+| MMCM | 1 | 1 | 6 | 17% |
+
+The Artix-7 targets use an on-chip MMCM to generate the 12 MHz design clock from the boards' 100 MHz oscillator. The slight IOB difference reflects the Arty's extra active-low reset button input.
 
 ## Quick Start
 
@@ -41,6 +61,21 @@ apio build
 
 # Upload
 apio upload
+
+# Connect (Linux example)
+minicom -D /dev/ttyUSB1 -b 115200
+```
+
+For AMD Artix-7 boards (requires Vivado in PATH):
+
+```
+# Build and program Arty A7-100T
+make synth-arty
+make upload-arty
+
+# Build and program Nexys A7-100T
+make synth-nexys
+make upload-nexys
 
 # Connect (Linux example)
 minicom -D /dev/ttyUSB1 -b 115200
@@ -84,7 +119,10 @@ fpga_enigma/
 │   ├── config_manager.v    Configuration registers + plugboard storage
 │   ├── fsm_controller.v    Main FSM: startup, cipher, commands, reset
 │   ├── response_generator.v  Command response formatter (OK/ERR/:?)
-│   └── enigma_common.vh    Shared helper functions (mod26)
+│   ├── enigma_common.vh    Shared helper functions (mod26)
+│   ├── enigma_top_amd.v      Artix-7 MMCM clock wrapper (100 MHz → 12 MHz)
+│   ├── enigma_top_arty.v     Arty A7-100T top-level (wraps enigma_top_amd)
+│   └── enigma_top_nexys.v    Nexys A7-100T top-level (wraps enigma_top_amd)
 ├── tb/                   Regression testbenches (9 total)
 │   ├── enigma_tb.v         Comprehensive 7-case cipher test suite
 │   ├── error_handling_tb.v Error path coverage (9 cases)
@@ -97,15 +135,26 @@ fpga_enigma/
 │   ├── config_manager_tb.v Config register unit tests
 │   └── dev/                Development/debug testbenches
 ├── constraints/          Pin constraints
-│   └── fpga_enigma.pcf    iCE40-HX8K-CT256 pin assignments
+│   ├── fpga_enigma.pcf    iCE40-HX8K-CT256 pin assignments
+│   ├── arty_a7_100t.xdc   Arty A7-100T pin constraints (Vivado XDC)
+│   └── nexys_a7_100t.xdc  Nexys A7-100T pin constraints (Vivado XDC)
 ├── doc/                  Documentation
-│   ├── fpga_enigma_spec_v2.md  Technical specification
-│   └── QuickStart.md           User walkthrough
+│   ├── spec_index.md            Specification navigator (links to all spec docs)
+│   ├── spec_cipher_algorithm.md Cipher math, wiring tables, substitution algorithm
+│   ├── spec_rtl_modules.md      Module hierarchy, ports, FSM, AMD support
+│   ├── spec_uart_protocol.md    UART protocol, command reference, character I/O
+│   ├── spec_reset_init.md       Reset mechanisms, power-on sequencing, LEDs
+│   ├── spec_verification.md     Timing analysis, test vectors, toolchain, pins
+│   └── QuickStart.md            User walkthrough
 ├── scripts/              Helper scripts
 │   ├── verify_pyenigma.sh  Cross-validation against pyenigma oracle
-│   └── coverage_summary.sh VCD-based signal toggle coverage report
+│   ├── coverage_summary.sh VCD-based signal toggle coverage report
+│   └── hw_test.py          Hardware integration tests (serial, requires board)
 ├── .github/workflows/
 │   └── ci.yml            GitHub Actions CI (lint, synth-check, test, coverage)
+├── tcl/                  Vivado TCL scripts (AMD targets)
+│   ├── build.tcl           Parameterized synthesis + implementation
+│   └── upload.tcl          JTAG programming
 ├── Makefile              Build and test automation
 └── apio.ini              Board configuration
 ```
@@ -124,14 +173,20 @@ make lint
 # Yosys iCE40 synthesis check (no place-and-route; requires Yosys)
 make synth-check
 
+# Yosys Artix-7 synthesis check (also runs in CI)
+make synth-check-amd
+
 # VCD-based signal toggle coverage report
 make coverage
 
 # Cross-validate against pyenigma (requires: pip install pyenigma)
 ./scripts/verify_pyenigma.sh
+
+# Hardware integration tests (requires board connected, pyserial installed)
+python3 scripts/hw_test.py
 ```
 
-Test cases include ground settings, Operation Barbarossa historical settings, double-step anomaly, ring offsets, triple-notch turnover, 26-character full cycle, self-reciprocal round-trip, UART protocol tests, and unit-level coverage for the stepper, plugboard, and config manager modules. A GitHub Actions CI pipeline runs lint, synth-check, test, and coverage on every push and PR.
+Test cases include ground settings, Operation Barbarossa historical settings, double-step anomaly, ring offsets, triple-notch turnover, 26-character full cycle, self-reciprocal round-trip, UART protocol tests, and unit-level coverage for the stepper, plugboard, and config manager modules. The hardware integration test suite (`hw_test.py`) validates all cipher vectors, every command (happy path and error cases), and the command timeout on a live FPGA board over serial. A GitHub Actions CI pipeline runs lint, synth-check, test, and coverage on every push and PR.
 
 ## Toolchain
 
@@ -140,6 +195,7 @@ Test cases include ground settings, Operation Barbarossa historical settings, do
 - [nextpnr](https://github.com/YosysHQ/nextpnr) for place and route
 - [Icarus Verilog](https://github.com/steveicarus/iverilog) for simulation
 - [Verilator](https://github.com/verilator/verilator) for linting
+- [Vivado](https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html) (via Vitis) for AMD Artix-7 synthesis, implementation, and device programming — used in batch/CLI mode only (`vivado -mode batch`)
 
 ## Status & Disclaimer
 

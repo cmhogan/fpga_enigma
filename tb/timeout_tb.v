@@ -5,8 +5,9 @@
 
 // timeout_tb.v
 // — Self-checking testbench for FSM timeout mechanism
-// Tests the 256 byte-time (~22ms) timeout that returns FSM to IDLE
-// when a command is abandoned mid-parse.
+// Tests the command timeout that returns FSM to IDLE when a command
+// is abandoned mid-parse. Uses CMD_TIMEOUT override for fast simulation;
+// hardware default is 3 seconds.
 
 `timescale 1ns / 1ps
 
@@ -22,7 +23,10 @@ module timeout_tb;
     wire uart_tx_pin;
     wire led_d1, led_d2, led_d3, led_d4, led_d5;
 
-    enigma_top dut (
+    // Use short timeout for simulation (~22ms = 266240 clocks at 12 MHz)
+    enigma_top #(
+        .CMD_TIMEOUT(266240)
+    ) dut (
         .clk       (clk),
         .ext_rst_n (1'b1),
         .uart_rx   (uart_rx_pin),

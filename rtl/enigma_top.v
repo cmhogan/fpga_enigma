@@ -8,8 +8,9 @@
 // Structural instantiation of all sub-modules with LED drivers.
 
 module enigma_top #(
-    parameter CLK_FREQ  = 12_000_000,
-    parameter BAUD_RATE = 115_200
+    parameter CLK_FREQ    = 12_000_000,
+    parameter BAUD_RATE   = 115_200,
+    parameter CMD_TIMEOUT = 0            // 0 = use default (CLK_FREQ * 3)
 ) (
     input  wire clk,        // 12 MHz oscillator
     input  wire ext_rst_n,  // External reset (active-low), tie to 1'b1 if unused
@@ -48,7 +49,7 @@ module enigma_top #(
     /* verilator lint_off WIDTH */
     localparam [11:0] BAUD_DIV_VAL = CLK_FREQ / BAUD_RATE - 1;
     localparam [11:0] HALF_BIT_VAL = (CLK_FREQ / BAUD_RATE) / 2 - 1;
-    localparam [18:0] TIMEOUT_LIMIT_VAL = (CLK_FREQ / BAUD_RATE) * 10 * 256;
+    localparam [25:0] TIMEOUT_LIMIT_VAL = (CMD_TIMEOUT != 0) ? CMD_TIMEOUT : CLK_FREQ * 3;
     localparam [22:0] HEARTBEAT_MAX_VAL = CLK_FREQ / 2 - 1;
     /* verilator lint_on WIDTH */
 
